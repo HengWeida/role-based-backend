@@ -19,5 +19,13 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HengWeida/role-based-backend.git"
+  },
+  "bugs": {
+    "url": "https://github.com/HengWeida/role-based-backend/issues"
+  },
+  "homepage": "https://github.com/HengWeida/role-based-backend#readme"
 }

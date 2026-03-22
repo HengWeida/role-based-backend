@@ -18,65 +18,73 @@ app.use(express.json());
 
 // In-memory "database" (replace with MongoDB later)
 let users = [
-    { id: 1, username: 'admin', password: '$2a$10$...', role: 'admin' }, // pre-hashed
-    { id: 2, username: 'alice', password: '$2a$10$...', role: 'user' }
+    { 
+        id: 1, 
+        email: 'nerisergio@adminmail.com', // Changed from username
+        password: bcrypt.hashSync('Password123!', 10), 
+        role: 'admin',
+        fname: 'Sergio',
+        lname: 'Neri'
+    },
+    { 
+        id: 2, 
+        email: 'student@example.com', 
+        password: bcrypt.hashSync('user123', 10), 
+        role: 'user',
+        fname: 'Juan',
+        lname: 'Dela Cruz'
+    }
 ];
-
-// Helper: Hash password (run once to generate hashes)
-// console.log(bcrypt.hashSync('admin123', 10)); // Use this to generate real hashes
-
-// Pre-hash known passwords for demo
-if (!users[0].password.includes('$2a$')) {
-    users[0].password = bcrypt.hashSync('admin123', 10);
-    users[1].password = bcrypt.hashSync('user123', 10);
-}
 
 //AUTH ROUTES
 
 // POST /api/register
 app.post('/api/register', async (req, res) => {
-    const { username, password, role = 'user' } = req.body;
+    const { email, password, role = 'user', fname, lname } = req.body;
 
-    if (!username || !password) {
-        return res.status(400).json({ error: 'Username and password required' });
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password required' });
     }
 
-    // Check if user exists
-    const existing = users.find(u => u.username === username);
+    const existing = users.find(u => u.email === email);
     if (existing) {
         return res.status(409).json({ error: 'User already exists' });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = {
         id: users.length + 1,
-        username,
+        email,
         password: hashedPassword,
-        role // Note: In real apps, role should NOT be set by client!
+        role,
+        fname,
+        lname
     };
 
     users.push(newUser);
-    res.status(201).json({ message: 'User registered', username, role });
+    res.status(201).json({ message: 'User registered', email, role });
 });
 
 // POST /api/login
 app.post('/api/login', async (req, res) => {
-    const { username, password } = req.body;
+    const { email, password } = req.body; // Changed from username to email
 
-    const user = users.find(u => u.username === username);
+    const user = users.find(u => u.email === email);
     if (!user || !await bcrypt.compare(password, user.password)) {
         return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Generate JWT token
+    // Generate JWT token using email
     const token = jwt.sign(
-        { id: user.id, username: user.username, role: user.role },
+        { id: user.id, email: user.email, role: user.role },
         SECRET_KEY,
         { expiresIn: '1h' }
     );
 
-    res.json({ token, user: { username: user.username, role: user.role } });
+    res.json({ 
+        token, 
+        user: { email: user.email, role: user.role, fname: user.fname, lname: user.lname } 
+    });
 });
 
 //PROTECTED ROUTE: Get user profile
@@ -94,6 +102,22 @@ app.get('/api/content/guest', (req, res) => {
     res.json({ message: 'Public content for all visitors' });
 });
 
+let serverDatabase = { 
+    accounts: [], 
+    departments: [], 
+    employees: [], 
+    requests: [] 
+};
+
+app.get('/api/database', authenticateToken, (req, res) => {
+    res.json(serverDatabase);
+});
+
+app.post('/api/database/update', authenticateToken, (req, res) => {
+    serverDatabase = req.body; 
+    res.json({ success: true, message: "Data saved on server!" });
+});
+
 //MIDDLEWARE
 
 // Token authentication
@@ -101,13 +125,11 @@ function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
-    if (!token) {
-        return res.status(401).json({ error: 'Access token required' });
-    }
+    if (!token) return res.status(401).json({ error: 'Access token required' });
 
     jwt.verify(token, SECRET_KEY, (err, user) => {
         if (err) return res.status(403).json({ error: 'Invalid or expired token' });
-        req.user = user;
+        req.user = user; // This now contains { email, role, id }
         next();
     });
 }
@@ -122,10 +144,10 @@ function authorizeRole(role) {
     };
 }
 
-//Start server
+// Start server
 app.listen(PORT, () => {
     console.log(`Backend running on http://localhost:${PORT}`);
     console.log(`Try logging in with:`);
-    console.log(`  - Admin: username=admin, password=admin123`);
-    console.log(`  - User: username=alice, password=user123`);
+    console.log(`  - Admin: email=nerisergio@adminmail.com, password=Password123!`);
+    console.log(`  - User: email=student@example.com, password=user123`);
 });
