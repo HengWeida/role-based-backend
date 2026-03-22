@@ -74,16 +74,29 @@ app.post('/api/login', async (req, res) => {
         return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Generate JWT token using email
+    const payload = { 
+        id: user.id, 
+        fname: user.fname, 
+        lname: user.lname, 
+        email: user.email, 
+        role: user.role 
+    };
+
     const token = jwt.sign(
-        { id: user.id, email: user.email, role: user.role },
+        payload,
         SECRET_KEY,
         { expiresIn: '1h' }
     );
 
     res.json({ 
         token, 
-        user: { email: user.email, role: user.role, fname: user.fname, lname: user.lname } 
+        user: { 
+            id: user.id,
+            fname: user.fname, 
+            lname: user.lname,
+            email: user.email, 
+            role: user.role 
+        } 
     });
 });
 
